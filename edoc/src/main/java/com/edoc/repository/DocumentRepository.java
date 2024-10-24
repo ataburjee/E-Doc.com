@@ -18,4 +18,5 @@ public interface DocumentRepository extends JpaRepository<Document, String> {
     @Query("SELECT d FROM Document d WHERE d.id = ?1 AND d.owner = ?2")
     Document findByUserIdAndDocId(String docId, String userId);
 
+    Document findByTitle(String title);
 }

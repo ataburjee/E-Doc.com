@@ -3,19 +3,24 @@ package com.edoc.service.security;
 import com.edoc.model.User;
 import com.edoc.model.UserCredential;
 import com.edoc.repository.UserRepository;
+import com.edoc.service.Utility;
+import org.json.simple.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
 public class UserService {
 
     @Autowired
-    UserRepository repo;
+    UserRepository userRepo;
 
     @Autowired
     JWTService jwtService;
@@ -26,14 +31,32 @@ public class UserService {
     @Autowired
     AuthenticationManager authManager;
 
-    public User userResister(User user) {
+    public JSONObject registerUser(User user) throws Exception {
+
         user.setPassword(passwordEncoder.encode(user.getPassword()));
-        return repo.save(user);
+
+        String username = user.getUsername();
+        if (userRepo.existsByUsername(username)) {
+            return Utility.getErrorResponse("Provided email id already registered", String.format("Email '%s' already exists!", username), HttpStatus.CONFLICT);
+        }
+
+        try {
+            user.setId(Utility.generateId());
+            long ct = System.currentTimeMillis();
+            user.setCt(ct);
+            user.setLu(ct);
+            userRepo.save(user);
+            return Utility.getResponse("User registered successfully", HttpStatus.ACCEPTED);
+        } catch (Exception e) {
+            return Utility.getErrorResponse(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
-    public User updateUserCredential(String id, UserCredential userCredential) {
-        Optional<User> userOpt = repo.findById(id);
-        if (userOpt.isEmpty()) return null;
+    public JSONObject updateUserCredential(String id, UserCredential userCredential) {
+        Optional<User> userOpt = userRepo.findById(id);
+        if (userOpt.isEmpty()) {
+            return Utility.getErrorResponse("User does not exists", String.format("Invalid userId %s", id), HttpStatus.NOT_FOUND);
+        }
         User user = userOpt.get();
 
         String username = userCredential.getUsername();
@@ -45,16 +68,30 @@ public class UserService {
         if (password != null && !password.isEmpty()) {
             user.setPassword(passwordEncoder.encode(user.getPassword()));
         }
-        return repo.save(user);
+        user.setLu(System.currentTimeMillis());
+        try {
+            userRepo.save(user);
+            return Utility.getResponse("Updated successfully", HttpStatus.ACCEPTED);
+        } catch (Exception e) {
+            return Utility.getErrorResponse(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
-    public String verifyUser(UserCredential userCredential) {
+    public JSONObject verifyUser(UserCredential userCredential) throws Exception {
         try {
             authManager.authenticate(new UsernamePasswordAuthenticationToken(userCredential.getUsername(), userCredential.getPassword()));
-            return "Login Successful. Token: " + jwtService.generateToken(userCredential.getUsername());
         } catch (Exception e) {
-            System.out.println("error = " + e.getMessage());
-            return e.getMessage();
+            return Utility.getErrorResponse("Incorrect username/password", "Invalid credentials", HttpStatus.UNAUTHORIZED);
         }
+        String username = userCredential.getUsername();
+        User user = userRepo.findByUsername(username);
+        return getLoginResponse(user, username);
+    }
+
+    private JSONObject getLoginResponse(User user, String username) throws Exception {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("user", user);
+        map.put("token", jwtService.generateToken(username));
+        return Utility.getResponse(map, HttpStatus.OK);
     }
 }

@@ -20,14 +20,20 @@ public class DocumentService {
 
     public JSONObject createDocument(Document document) throws Exception {
 
-        Document findDoc = docRepo.findByOwnerAndTitle(document.getOwner(), document.getTitle());
+        Document findDoc = docRepo.findByOwnerAndTitle(document.getOwner(), document.getTitle().trim());
 
         if (findDoc != null) {
+            System.out.println("doc found with the title...");
             return Utility.getErrorResponse("Document already exists, Please chose a different title", HttpStatus.CONFLICT);
         }
         try {
+            long currentTime = System.currentTimeMillis();
+            document.setId(Utility.generateId())
+                    .setCt(currentTime)
+                    .setLu(currentTime)
+                    .setLub(document.getOwner());
             docRepo.save(document);
-            return Utility.getResponse("", "Document created successfully", HttpStatus.CREATED);
+            return Utility.getResponse("Document created successfully", HttpStatus.CREATED);
         } catch (Exception e) {
             return Utility.getErrorResponse(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
@@ -39,7 +45,10 @@ public class DocumentService {
         if (documents.isEmpty()) {
             return Utility.NO_DATA_AVAILABLE();
         }
-        return Utility.getResponse("documents", new JSONArray().add(documents), HttpStatus.OK);
+        JSONArray jsonArray = new JSONArray();
+        Collections.reverse(documents);
+        jsonArray.add(documents);
+        return Utility.getResponse("documents", jsonArray, HttpStatus.OK);
     }
 
     public JSONObject getDocumentOfUser(String userId, String docId) {
@@ -96,9 +105,8 @@ public class DocumentService {
             collaborators.put(recipientEmail, accessTypeList);
         }
 
-        document.setCollaborators(collaborators);
         try {
-            docRepo.save(document);
+            docRepo.save(document.setCollaborators(collaborators));
             return Utility.getResponse("", "Document shared successfully", HttpStatus.ACCEPTED);
         } catch (Exception e) {
             return Utility.getErrorResponse(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
@@ -121,6 +129,44 @@ public class DocumentService {
         if (documentList.isEmpty()) {
             return Utility.NO_DATA_AVAILABLE();
         }
-        return Utility.getResponse("documents", new JSONArray().add(documentList), HttpStatus.OK);
+
+        JSONArray docArray = new JSONArray();
+        docArray.add(documentList);
+        return Utility.getResponse("documents", docArray, HttpStatus.OK);
+    }
+
+
+    public JSONObject updateDocument(String documentId, Document documentToUpdate) throws Exception {
+//        documentToUpdate =  owner/userId,
+//                            title,
+//                            content
+        if (!docRepo.existsById(documentId)) {
+            return Utility.getErrorResponse("Provide valid document id", "Document not found, documentId = " + documentId, HttpStatus.NOT_FOUND);
+        }
+        if (documentToUpdate.getOwner().isEmpty()) {
+            return Utility.getErrorResponse("Please define document owner", HttpStatus.BAD_REQUEST);
+        }
+
+        Document existingDocument = docRepo.findById(documentId).get();
+
+        if (documentToUpdate.getTitle() != null) {
+            String title = documentToUpdate.getTitle();
+            if (!title.isEmpty()) {
+                existingDocument.setTitle(title);
+            }
+        }
+
+        if (documentToUpdate.getContent() != null) {
+            String content = documentToUpdate.getContent();
+            if (!content.isEmpty()) {
+                existingDocument.setTitle(content);
+            }
+        }
+        try {
+            docRepo.save(existingDocument);
+            return Utility.getResponse("Document updated successfully", HttpStatus.OK);
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage());
+        }
     }
 }
