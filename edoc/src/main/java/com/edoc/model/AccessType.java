@@ -1,6 +1,6 @@
 package com.edoc.model;
 
-public enum Role {
+public enum AccessType {
     OWNER,
     VIEWER,
     EDITOR,

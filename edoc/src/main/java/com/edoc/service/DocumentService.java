@@ -1,7 +1,7 @@
 package com.edoc.service;
 
 import com.edoc.model.Document;
-import com.edoc.model.Role;
+import com.edoc.model.AccessType;
 import com.edoc.model.ShareDocument;
 import com.edoc.repository.DocumentRepository;
 import org.json.simple.JSONArray;
@@ -62,9 +62,9 @@ public class DocumentService {
         return Utility.getResponse("document", document, HttpStatus.OK);
     }
 
-    public JSONObject shareDocument(ShareDocument requestBody) {
+    public JSONObject shareDocument(String documentId, ShareDocument requestBody) {
 
-        Optional<Document> findDoc = docRepo.findById(requestBody.getDocumentId());
+        Optional<Document> findDoc = docRepo.findById(documentId);
 
         if (findDoc.isEmpty()) {
             Utility.NO_DATA_AVAILABLE();
@@ -77,6 +77,10 @@ public class DocumentService {
 
         String recipientEmail = requestBody.getRecipientEmail();
         List<String> accessTypeList = requestBody.getAccessType();
+
+        if (accessTypeList.isEmpty()) {
+            return Utility.getErrorResponse("Please select an access type", "At least one access type has to provide", HttpStatus.BAD_REQUEST);
+        }
 
         //Check for valid access type
         for (String access : accessTypeList) {
@@ -92,9 +96,12 @@ public class DocumentService {
 
         if (collaborators.containsKey(recipientEmail)) {
             List<String> existingAccess = collaborators.get(recipientEmail);
+            if (existingAccess.size() == AccessType.values().length - 1) {
+                return Utility.getErrorResponse("User already has all the access", HttpStatus.BAD_REQUEST);
+            }
             for (String access : accessTypeList) {
                 if (existingAccess.contains(access)) {
-                    return Utility.getErrorResponse("User already has the access", HttpStatus.CONFLICT);
+                    return Utility.getErrorResponse("User already has the access \"" + access + "\"", HttpStatus.CONFLICT);
                 } else {
                     existingAccess.add(access);
                 }
@@ -107,7 +114,7 @@ public class DocumentService {
 
         try {
             docRepo.save(document.setCollaborators(collaborators));
-            return Utility.getResponse("", "Document shared successfully", HttpStatus.ACCEPTED);
+            return Utility.getResponse("Document shared successfully", HttpStatus.ACCEPTED);
         } catch (Exception e) {
             return Utility.getErrorResponse(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
@@ -116,7 +123,7 @@ public class DocumentService {
 
     private boolean isValidAccessType(String accessType) {
 
-        for (Role type : Role.values()) {
+        for (AccessType type : AccessType.values()) {
             if (type.name().equalsIgnoreCase(accessType)) {
                 return true;
             }
@@ -147,20 +154,17 @@ public class DocumentService {
             return Utility.getErrorResponse("Please define document owner", HttpStatus.BAD_REQUEST);
         }
 
-        Document existingDocument = docRepo.findById(documentId).get();
-
-        if (documentToUpdate.getTitle() != null) {
-            String title = documentToUpdate.getTitle();
-            if (!title.isEmpty()) {
-                existingDocument.setTitle(title);
-            }
+        String title = documentToUpdate.getTitle();
+        if (title == null || title.isEmpty()) {
+            return Utility.getErrorResponse("Please provide a title of the document", "Title not found", HttpStatus.BAD_REQUEST);
         }
 
-        if (documentToUpdate.getContent() != null) {
-            String content = documentToUpdate.getContent();
-            if (!content.isEmpty()) {
-                existingDocument.setTitle(content);
-            }
+        Document existingDocument = docRepo.findById(documentId).get();
+        existingDocument.setTitle(title);
+
+        String content = documentToUpdate.getContent();
+        if (content != null && !content.isEmpty()) {
+            existingDocument.setContent(content);
         }
         try {
             docRepo.save(existingDocument);

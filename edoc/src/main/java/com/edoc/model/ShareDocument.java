@@ -9,8 +9,6 @@ import java.util.List;
 @AllArgsConstructor
 public class ShareDocument {
 
-    private String documentId;
-
     private String owner;
 
     private String recipientEmail;

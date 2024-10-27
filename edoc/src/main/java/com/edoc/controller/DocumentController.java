@@ -45,9 +45,9 @@ public class DocumentController {
     }
 
     //Share document with a person
-    @PatchMapping("/documents/share")
-    public ResponseEntity<?> shareDocument(@RequestBody ShareDocument document) throws Exception {
-        return Utility.generateResponse(documentService.shareDocument(document));
+    @PatchMapping("/documents/{documentId}/share")
+    public ResponseEntity<?> shareDocument(@PathVariable String documentId, @RequestBody ShareDocument document) throws Exception {
+        return Utility.generateResponse(documentService.shareDocument(documentId, document));
     }
 
 }
