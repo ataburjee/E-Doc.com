@@ -1,7 +1,7 @@
 package com.edoc.service;
 
 import com.edoc.model.Document;
-import com.edoc.model.Role;
+import com.edoc.model.AccessType;
 import com.edoc.model.ShareDocument;
 import com.edoc.repository.DocumentRepository;
 import org.json.simple.JSONArray;
@@ -16,7 +16,7 @@ import java.util.*;
 public class DocumentService {
 
     @Autowired
-    private DocumentRepository docRepo;
+    DocumentRepository docRepo;
 
     public JSONObject createDocument(Document document) throws Exception {
 
@@ -90,12 +90,16 @@ public class DocumentService {
             collaborators = new LinkedHashMap<>();
         }
 
+        //If recipient already has some access
         if (collaborators.containsKey(recipientEmail)) {
+            //Getting accesses
             List<String> existingAccess = collaborators.get(recipientEmail);
             for (String access : accessTypeList) {
+                //If the providing access already there
                 if (existingAccess.contains(access)) {
                     return Utility.getErrorResponse("User already has the access", HttpStatus.CONFLICT);
                 } else {
+                    // If the access is not there then add it
                     existingAccess.add(access);
                 }
             }
@@ -116,7 +120,7 @@ public class DocumentService {
 
     private boolean isValidAccessType(String accessType) {
 
-        for (Role type : Role.values()) {
+        for (AccessType type : AccessType.values()) {
             if (type.name().equalsIgnoreCase(accessType)) {
                 return true;
             }
