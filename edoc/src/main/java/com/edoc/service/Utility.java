@@ -20,7 +20,7 @@ public class Utility {
     public static final String ERROR_CODE = "error code";
 
     public static JSONObject getResponse(String key, Object value, HttpStatus httpStatus) {
-        if (key == null) key = MESSAGE;
+        if (key == null || key.isEmpty()) key = MESSAGE;
         JSONObject jsonObject = new JSONObject();
         JSONObject msgObject = new JSONObject();
         msgObject.put(key, value);

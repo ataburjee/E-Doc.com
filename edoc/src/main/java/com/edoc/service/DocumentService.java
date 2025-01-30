@@ -3,11 +3,15 @@ package com.edoc.service;
 import com.edoc.model.Document;
 import com.edoc.model.AccessType;
 import com.edoc.model.ShareDocument;
+import com.edoc.model.User;
 import com.edoc.repository.DocumentRepository;
+import com.edoc.repository.UserRepository;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -16,7 +20,10 @@ import java.util.*;
 public class DocumentService {
 
     @Autowired
-    DocumentRepository docRepo;
+    private DocumentRepository docRepo;
+
+    @Autowired
+    private UserRepository userRepo;
 
     public JSONObject createDocument(Document document) throws Exception {
 
@@ -67,15 +74,22 @@ public class DocumentService {
         Optional<Document> findDoc = docRepo.findById(requestBody.getDocumentId());
 
         if (findDoc.isEmpty()) {
-            Utility.NO_DATA_AVAILABLE();
+            return Utility.NO_DATA_AVAILABLE();
         }
 
         Document document = findDoc.get();
-        if (!document.getOwner().equals(requestBody.getOwner())) {
+        String owner = requestBody.getOwner();
+        if (!document.getOwner().equals(owner)) {
             return Utility.getErrorResponse("User has no access", HttpStatus.UNAUTHORIZED);
         }
 
         String recipientEmail = requestBody.getRecipientEmail();
+        User recipientUser = userRepo.findByUsername(recipientEmail);
+
+        if (recipientUser == null) {
+            return Utility.getErrorResponse("Recipient is not a Edoc user", HttpStatus.NOT_FOUND);
+        }
+
         List<String> accessTypeList = requestBody.getAccessType();
 
         //Check for valid access type
@@ -171,6 +185,40 @@ public class DocumentService {
             return Utility.getResponse("Document updated successfully", HttpStatus.OK);
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage());
+        }
+    }
+
+    public JSONObject deleteDocument(String documentId) {
+        Optional<Document> document = docRepo.findById(documentId);
+        if (document.isEmpty()) {
+            return Utility.NO_DATA_AVAILABLE();
+        }
+        String owner = document.get().getOwner();
+        Optional<User> user = userRepo.findById(owner);
+
+        if (user.isEmpty()) {
+            return Utility.getErrorResponse("User does not exists", HttpStatus.NOT_FOUND);
+        }
+        String usernameFromDoc = user.get().getUsername();
+        String usernameFromAuth = getAuthenticatedUsername();
+
+        if (!usernameFromDoc.equals(usernameFromAuth)) {
+            return Utility.getErrorResponse("No permission to delete others document", HttpStatus.BAD_REQUEST);
+        }
+        try {
+            docRepo.deleteById(documentId);
+            return Utility.getResponse("Document deleted successfully", HttpStatus.OK);
+        } catch (Exception e) {
+            return Utility.getErrorResponse(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    private String getAuthenticatedUsername() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof UserDetails) {
+            return ((UserDetails) principal).getUsername(); // Returns the username (email)
+        } else {
+            return principal.toString();
         }
     }
 }

@@ -4,6 +4,7 @@ import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.util.List;
@@ -19,16 +20,19 @@ public class Document {
     @Id
     private String id;
     @Setter
+    @NotNull
     private String title;
     @Setter
     private String content;
     //User id
+    @NotNull(message = "Owner is mandatory")
     private String owner;
     private long ct;
     private long lu;
     private String lub;
     //Map<userId, List<accessType>>
     @Convert(converter = MapConverter.class)
+    // Shared users and their corresponding access types
     private Map<String, List<String>> collaborators;
 
     public Document setId(String id) {

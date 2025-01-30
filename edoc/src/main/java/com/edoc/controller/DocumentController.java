@@ -33,7 +33,7 @@ public class DocumentController {
         return Utility.generateResponse(documentService.listDocumentsOfUser(userId));
     }
 
-    //Get a particular document for an user
+    //Get a particular document for a user
     @GetMapping("{userId}/documents/{documentId}")
     public ResponseEntity<?> getDocumentOfAnUser(@PathVariable String userId, @PathVariable String documentId) throws Exception {
         return Utility.generateResponse(documentService.getDocumentOfUser(userId, documentId));
@@ -48,6 +48,11 @@ public class DocumentController {
     @PatchMapping("/documents/share")
     public ResponseEntity<?> shareDocument(@RequestBody ShareDocument document) throws Exception {
         return Utility.generateResponse(documentService.shareDocument(document));
+    }
+
+    @DeleteMapping("/documents/{documentId}")
+    public ResponseEntity<?> deleteDocument(@PathVariable String documentId) throws Exception {
+        return Utility.generateResponse(documentService.deleteDocument(documentId));
     }
 
 }
