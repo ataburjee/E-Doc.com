@@ -4,12 +4,10 @@ import com.edoc.model.User;
 import com.edoc.model.UserCredential;
 import com.edoc.repository.UserRepository;
 import com.edoc.service.Utility;
-import com.edoc.service.security.UserService;
+import com.edoc.service.UserService;
 import jakarta.validation.Valid;
-import org.json.simple.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

@@ -1,6 +1,7 @@
 package com.edoc.controller;
 
 import com.edoc.model.Document;
+import com.edoc.model.RemoveAccess;
 import com.edoc.model.ShareDocument;
 import com.edoc.service.DocumentService;
 import com.edoc.service.Utility;
@@ -53,6 +54,12 @@ public class DocumentController {
     @DeleteMapping("/documents/{documentId}")
     public ResponseEntity<?> deleteDocument(@PathVariable String documentId) throws Exception {
         return Utility.generateResponse(documentService.deleteDocument(documentId));
+    }
+
+    //Remove one/more access type from a user
+    @PatchMapping("/documents/{documentId}")
+    public ResponseEntity<?> removeDocumentAccess(@PathVariable String documentId, @RequestBody RemoveAccess accessorDetails) throws Exception {
+        return Utility.generateResponse(documentService.removeDocumentAccessType(documentId, accessorDetails));
     }
 
 }

@@ -1,9 +1,6 @@
 package com.edoc.service;
 
-import com.edoc.model.Document;
-import com.edoc.model.AccessType;
-import com.edoc.model.ShareDocument;
-import com.edoc.model.User;
+import com.edoc.model.*;
 import com.edoc.repository.DocumentRepository;
 import com.edoc.repository.UserRepository;
 import org.json.simple.JSONArray;
@@ -219,6 +216,34 @@ public class DocumentService {
             return ((UserDetails) principal).getUsername(); // Returns the username (email)
         } else {
             return principal.toString();
+        }
+    }
+
+    public JSONObject removeDocumentAccessType(String documentId, RemoveAccess accessorDetails) {
+        Optional<Document> document = docRepo.findById(documentId);
+        if (document.isEmpty()) {
+            return Utility.NO_DATA_AVAILABLE();
+        }
+        Map<String, List<String>> collaborators = document.get().getCollaborators();
+        if (collaborators == null || collaborators.isEmpty()){
+            return Utility.getErrorResponse("No document collaborators found", HttpStatus.NOT_FOUND);
+        }
+        String accessedUserId = accessorDetails.getAccessorUserId();
+        if (!collaborators.containsKey(accessedUserId)) {
+            return Utility.getErrorResponse("Accessor is not a collaborator of this document", HttpStatus.NOT_FOUND);
+        }
+        String accessType = accessorDetails.getAccessType().name();
+        List<String> accessList = collaborators.get(accessedUserId);
+        if (!isValidAccessType(accessType)) {
+            return Utility.getErrorResponse("Please provide a valid access type", HttpStatus.NOT_ACCEPTABLE);
+        }
+        if (accessList.isEmpty() || !accessList.contains(accessType)) {
+            return Utility.getErrorResponse("No document collaborators found", HttpStatus.NOT_FOUND);
+        }
+        if (accessList.remove(accessType)) {
+            return Utility.getResponse("Access removed successfully", HttpStatus.OK);
+        } else {
+            return Utility.getErrorResponse("Not removed!", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }

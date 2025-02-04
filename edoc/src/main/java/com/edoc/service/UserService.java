@@ -1,9 +1,9 @@
-package com.edoc.service.security;
+package com.edoc.service;
 
 import com.edoc.model.User;
 import com.edoc.model.UserCredential;
 import com.edoc.repository.UserRepository;
-import com.edoc.service.Utility;
+import com.edoc.service.security.JWTService;
 import org.json.simple.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -33,13 +33,11 @@ public class UserService {
 
     public JSONObject registerUser(User user) throws Exception {
 
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-
         String username = user.getUsername();
         if (userRepo.existsByUsername(username)) {
             return Utility.getErrorResponse("Provided email id already registered", String.format("Email '%s' already exists!", username), HttpStatus.CONFLICT);
         }
-
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
         try {
             user.setId(Utility.generateId());
             long ct = System.currentTimeMillis();
