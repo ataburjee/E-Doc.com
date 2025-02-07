@@ -1,9 +1,7 @@
 package com.edoc.model;
 
-import jakarta.persistence.Convert;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
@@ -14,7 +12,6 @@ import java.util.Map;
 @NoArgsConstructor
 @Entity
 @Getter
-@Table(name = "documents")
 public class Document {
 
     @Id
@@ -24,16 +21,21 @@ public class Document {
     private String title;
     @Setter
     private String content;
-    //User id
-    @NotNull(message = "Owner is mandatory")
-    private String owner;
+    @NotNull(message = "Owner/userId is mandatory")
+    private String userId;
     private long ct;
     private long lu;
+    @Setter
     private String lub;
     //Map<userId, List<accessType>>
-    @Convert(converter = MapConverter.class)
     // Shared users and their corresponding access types
+    @Convert(converter = MapConverter.class)
     private Map<String, List<String>> collaborators;
+
+    @JsonIgnore
+    @ManyToOne
+    @JoinColumn(name = "userId", referencedColumnName = "id", insertable = false, updatable = false)
+    private User user;
 
     public Document setId(String id) {
         this.id = id;
@@ -47,11 +49,6 @@ public class Document {
 
     public Document setLu(long lu) {
         this.lu = lu;
-        return this;
-    }
-
-    public Document setLub(String lub) {
-        this.lub = lub;
         return this;
     }
 

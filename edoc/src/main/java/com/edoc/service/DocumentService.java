@@ -24,20 +24,31 @@ public class DocumentService {
 
     public JSONObject createDocument(Document document) throws Exception {
 
-        Document findDoc = docRepo.findByOwnerAndTitle(document.getOwner(), document.getTitle().trim());
+        String userId = document.getUserId();
+        Document findDoc = docRepo.findByUserIdAndTitle(userId, document.getTitle().trim());
 
         if (findDoc != null) {
             System.out.println("doc found with the title...");
-            return Utility.getErrorResponse("Document already exists, Please chose a different title", HttpStatus.CONFLICT);
+            return Utility.getErrorResponse(
+                    "Document already exists, Please chose a different title",
+                    "Document title already exists",
+                    HttpStatus.CONFLICT
+            );
         }
+
+        if (!userRepo.existsById(userId)) {
+            return Utility.getErrorResponse("User does not exists", HttpStatus.NOT_FOUND);
+        }
+
         try {
             long currentTime = System.currentTimeMillis();
             document.setId(Utility.generateId())
                     .setCt(currentTime)
                     .setLu(currentTime)
-                    .setLub(document.getOwner());
+                    .setLub(userId);
             docRepo.save(document);
             return Utility.getResponse("Document created successfully", HttpStatus.CREATED);
+
         } catch (Exception e) {
             return Utility.getErrorResponse(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
@@ -45,10 +56,11 @@ public class DocumentService {
 
     public JSONObject listDocumentsOfUser(String userId) {
 
-        List<Document> documents = docRepo.findByOwner(userId);
+        List<Document> documents = docRepo.findByUserId(userId);
         if (documents.isEmpty()) {
             return Utility.NO_DATA_AVAILABLE();
         }
+        documents.sort(Comparator.comparing(Document::getLu));
         JSONArray jsonArray = new JSONArray();
         Collections.reverse(documents);
         jsonArray.add(documents);
@@ -76,7 +88,7 @@ public class DocumentService {
 
         Document document = findDoc.get();
         String owner = requestBody.getOwner();
-        if (!document.getOwner().equals(owner)) {
+        if (!document.getUserId().equals(owner)) {
             return Utility.getErrorResponse("User has no access", HttpStatus.UNAUTHORIZED);
         }
 
@@ -152,14 +164,15 @@ public class DocumentService {
 
 
     public JSONObject updateDocument(String documentId, Document documentToUpdate) throws Exception {
-//        documentToUpdate =  owner/userId,
+//        documentToUpdate =
 //                            title,
-//                            content
+//                            conten
+//                            lub - last user(id) to update
         if (!docRepo.existsById(documentId)) {
             return Utility.getErrorResponse("Provide valid document id", "Document not found, documentId = " + documentId, HttpStatus.NOT_FOUND);
         }
-        if (documentToUpdate.getOwner().isEmpty()) {
-            return Utility.getErrorResponse("Please define document owner", HttpStatus.BAD_REQUEST);
+        if (documentToUpdate.getLub().isEmpty()) {
+            return Utility.getErrorResponse("Please define the current user id", HttpStatus.BAD_REQUEST);
         }
 
         Document existingDocument = docRepo.findById(documentId).get();
@@ -174,9 +187,11 @@ public class DocumentService {
         if (documentToUpdate.getContent() != null) {
             String content = documentToUpdate.getContent();
             if (!content.isEmpty()) {
-                existingDocument.setTitle(content);
+                existingDocument.setContent(content);
             }
         }
+        existingDocument.setLu(System.currentTimeMillis());
+        existingDocument.setLub(documentToUpdate.getLub());
         try {
             docRepo.save(existingDocument);
             return Utility.getResponse("Document updated successfully", HttpStatus.OK);
@@ -190,7 +205,7 @@ public class DocumentService {
         if (document.isEmpty()) {
             return Utility.NO_DATA_AVAILABLE();
         }
-        String owner = document.get().getOwner();
+        String owner = document.get().getUserId();
         Optional<User> user = userRepo.findById(owner);
 
         if (user.isEmpty()) {
